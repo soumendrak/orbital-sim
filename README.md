@@ -95,4 +95,4 @@ Then enable GitHub Pages in your repository settings, pointing to the `gh-pages`
 
 ## License
 
-MIT © [Nous Research](https://nousresearch.com)
+Licensed under the [MIT License](LICENSE).
