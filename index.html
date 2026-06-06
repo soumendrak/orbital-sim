@@ -115,6 +115,9 @@
     color: #8ec0ff;
     font-weight: 500;
   }
+  select { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: #d0d0e0; padding: 6px 10px; border-radius: 8px; font-size: 12px; font-family: inherit; cursor: pointer; }
+  select:focus { outline: none; border-color: #4a9eff; }
+  select option { background: #1a1a2e; color: #d0d0e0; }
   #body-count {
     color: rgba(255,255,255,0.4);
     font-size: 12px;
@@ -190,6 +193,14 @@
     <div class="sep"></div>
     <button id="btn-pause" title="Pause / Resume">⏸ Pause</button>
     <button id="btn-clear" title="Clear orbital trails">🗑 Clear</button>
+    <div class="sep"></div>
+    <span class="hud-label">Preset</span>
+    <select id="preset-select">
+      <option value="">— Custom —</option>
+      <option value="earth-moon">🌍 Earth + Moon</option>
+      <option value="sun-earth">🌞 Sun + Earth</option>
+      <option value="inner-planets">🪐 Inner Planets</option>
+    </select>
     <div class="sep"></div>
     <span class="hud-label">Speed</span>
     <input type="range" id="speed-slider" min="0" max="3" step="0.1" value="1">
@@ -807,6 +818,7 @@
   const btnClear = document.getElementById('btn-clear');
   const speedSlider = document.getElementById('speed-slider');
   const speedVal = document.getElementById('speed-val');
+  const presetSelect = document.getElementById('preset-select');
 
   btnPause.addEventListener('click', () => {
     paused = !paused;
@@ -825,6 +837,14 @@
     speedVal.textContent = speed.toFixed(1) + '×';
   });
 
+  // Preset selector
+  presetSelect.addEventListener('change', () => {
+    const val = presetSelect.value;
+    if (!val) return;
+    applyPreset(val);
+    presetSelect.value = '';
+  });
+
   // keyboard shortcuts
   document.addEventListener('keydown', (e) => {
     if (e.key === ' ' || e.key === 'Space') {
@@ -837,6 +857,116 @@
   });
 
   // ————— init —————
+  function applyPreset(name) {
+    if (!name) return;
+    // Clear existing bodies except keep the central star reference
+    bodies = [];
+    const star = createCentralStar(canvas.width, canvas.height);
+    star.x = canvas.width / 2;
+    star.y = canvas.height / 2;
+    bodies.push(star);
+
+    const cx = canvas.width / 2;
+    const cy = canvas.height / 2;
+
+    // Helper: compute orbital velocity magnitude for a circular orbit
+    function orbitalSpeed(distFromStar, starMass) {
+      const dSq = distFromStar * distFromStar + SOFTEN * SOFTEN;
+      return Math.sqrt(G * starMass * distFromStar / dSq);
+    }
+
+    function addPlanet(name, color, glow, offsetX, offsetY, mass, radius) {
+      bodies.push({
+        x: cx + offsetX,
+        y: cy + offsetY,
+        vx: 0,
+        vy: 0,
+        mass: mass,
+        radius: radius || 6,
+        name: name,
+        color: color,
+        glowColor: glow,
+        isStar: false,
+        trail: []
+      });
+    }
+
+    function setOrbitalVelocity(idx, dist) {
+      const b = bodies[idx];
+      const speed = orbitalSpeed(dist, star.mass);
+      // Tangential velocity (perpendicular to radius vector)
+      const dx = b.x - star.x;
+      const dy = b.y - star.y;
+      if (dx === 0 && dy === 0) return;
+      // For a body at (dx, dy) from star, tangential direction is (-dy, dx) normalized
+      const len = Math.sqrt(dx * dx + dy * dy);
+      b.vx = (-dy / len) * speed;
+      b.vy = (dx / len) * speed;
+    }
+
+    switch (name) {
+      case 'earth-moon': {
+        // Earth-like body orbiting star
+        const earthDist = 250;
+        addPlanet('🌍 Earth', '#4a9eff', 'rgba(74,158,255,0.3)', earthDist, 0, 50, 8);
+        setOrbitalVelocity(1, earthDist);
+        // Moon orbiting Earth (at index 1)
+        const moonDist = 50;
+        addPlanet('🌙 Moon', '#aaaacc', 'rgba(170,170,204,0.3)', earthDist + moonDist, 0, 5, 4);
+        // Give moon initial velocity relative to Earth's orbital velocity
+        const moonSpeed = Math.sqrt(G * bodies[1].mass * moonDist / (moonDist * moonDist + SOFTEN * SOFTEN));
+        const moonDY = earthDist + moonDist - star.x;
+        bodies[2].vx = bodies[1].vx;
+        bodies[2].vy = bodies[1].vy + (moonDist > 0 ? moonSpeed : -moonSpeed);
+        break;
+      }
+      case 'sun-earth': {
+        // Replace star with a larger sun
+        bodies[0].mass = 2000;
+        bodies[0].radius = 24;
+        bodies[0].name = '☀️ Sun';
+        const earthDist = 300;
+        addPlanet('🌍 Earth', '#4a9eff', 'rgba(74,158,255,0.3)', earthDist, 0, 50, 8);
+        setOrbitalVelocity(1, earthDist);
+        break;
+      }
+      case 'inner-planets': {
+        // Replace star with a larger sun
+        bodies[0].mass = 3000;
+        bodies[0].radius = 28;
+        bodies[0].name = '☀️ Sun';
+        // Mercury
+        addPlanet('☿ Mercury', '#b5a68a', 'rgba(181,166,138,0.3)', 120, 0, 2, 4);
+        setOrbitalVelocity(1, 120);
+        // Venus
+        addPlanet('♀ Venus', '#e8c87a', 'rgba(232,200,122,0.3)', 180, 0, 10, 6);
+        setOrbitalVelocity(2, 180);
+        // Earth
+        addPlanet('🌍 Earth', '#4a9eff', 'rgba(74,158,255,0.3)', 250, 0, 12, 7);
+        setOrbitalVelocity(3, 250);
+        // Mars
+        addPlanet('♂ Mars', '#e07050', 'rgba(224,112,80,0.3)', 330, 0, 5, 5);
+        setOrbitalVelocity(4, 330);
+        break;
+      }
+    }
+
+    time = 0;
+    updateBodyCount();
+    instructions.classList.add('hidden');
+
+    // Preserve existing orbiting bodies limits for custom mode
+    // But reset trails and keep bodies clean
+    for (const b of bodies) {
+      b.trail = [];
+    }
+
+    // Force redraw
+    paused = false;
+    btnPause.textContent = '⏸ Pause';
+    btnPause.classList.remove('active');
+  }
+
   function init() {
     resize();
     bodies = [];
