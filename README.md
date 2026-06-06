@@ -6,9 +6,9 @@
 
 > A polished 2-body gravity simulation in your browser — click, drag, and watch orbits unfold.
 
-![Orbital Sim](https://raw.githubusercontent.com/nousresearch/orbital-sim/main/docs/screenshot.png)
+![Orbital Sim](https://raw.githubusercontent.com/soumendrak/orbital-sim/main/docs/screenshot.png)
 
-**Live demo:** [https://nousresearch.github.io/orbital-sim](https://nousresearch.github.io/orbital-sim)
+**Live demo:** [https://soumendrak.github.io/orbital-sim](https://soumendrak.github.io/orbital-sim)
 
 ---
 
@@ -83,7 +83,7 @@ orbital-sim/
 ## Deploy to GitHub Pages
 
 ```bash
-git clone https://github.com/YOUR_USER/orbital-sim.git
+git clone https://github.com/soumendrak/orbital-sim.git
 cd orbital-sim
 git checkout -b gh-pages
 git push origin gh-pages
